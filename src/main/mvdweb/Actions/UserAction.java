@@ -6,7 +6,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.sql.*;
-import java.util.HashMap;
 import java.util.Set;
 
 public class UserAction implements UserInterface {
@@ -122,17 +121,11 @@ public class UserAction implements UserInterface {
                 PreparedStatement vQ = sqlConn.prepareStatement(validateQuery);
                 ResultSet valSet = vQ.executeQuery();
 
-                HashMap<String, String> data = new HashMap<>();
+                String dbChanges = body.toString().replace("\"","\\\"");
 
                 while (valSet.next()) {
-                    for (String s : keys) {
-                        data.put(s, "Old:" + valSet.getString(s) + ";New:" + body.getString(s));
-                    }
-                }
-
-                if (!data.isEmpty()) {
                     try {
-                        String insertQuery = "INSERT INTO CHANGE_REQUESTS(v_id,changes,assignee,status) values (\"" + v_id + "\",\"" + data + "\"," + 1 + ",\"Open\");";
+                        String insertQuery = "INSERT INTO CHANGE_REQUESTS(v_id,changes,assignee,status) values (\"" + v_id + "\",\"" + dbChanges + "\"," + 1 + ",\"Open\");";
                         Statement stmt = sqlConn.createStatement();
                         stmt.executeUpdate(insertQuery);
 
@@ -141,8 +134,6 @@ public class UserAction implements UserInterface {
                     } catch (Exception e) {
                         return "Error";
                     }
-                } else {
-                    return "Wrong information";
                 }
             }
 
@@ -188,6 +179,58 @@ public class UserAction implements UserInterface {
             return "Error";
         }
 
+    }
+
+    @Override
+    public String patchUpdateVehicleChange(String cr_id, int submitted_by, JSONObject body){
+        try {
+
+            DB conn = new DB();
+            Connection sqlConn = conn.getCon();
+            Set<String> keys = body.keySet();
+
+            if (!keys.isEmpty()) {
+                String validateQuery = "select * from vehicles v,change_requests c where cr_id=" + cr_id + " " +
+                        "and c.v_id = v.v_id and rc_owner=" + submitted_by;
+
+                Statement vQ = sqlConn.createStatement();
+                ResultSet valSet = vQ.executeQuery(validateQuery);
+
+                String old_changes="";
+
+                while(valSet.next()){
+                    old_changes = valSet.getString("changes");
+                }
+
+                if(!old_changes.isEmpty()){
+                    JSONObject temp = new JSONObject(old_changes);
+
+                    for(String key: keys){
+                        temp.put(key,body.getString(key));
+                    }
+                    String updateQuery = "UPDATE CHANGE_REQUESTS set changes=\""+temp.toString().replace("\"","\\\"")+
+                            "\" where cr_id="+cr_id ;
+
+
+                    Statement stmt = sqlConn.createStatement();
+                    stmt.executeUpdate(updateQuery);
+
+                    sqlConn.close();
+                    return "Success";
+
+                }
+                else{
+                    System.out.println("Authentication error");
+                }
+
+            }
+
+            return "Empty Body";
+
+        } catch (Exception e){
+            e.printStackTrace();
+            return e.toString();
+        }
     }
 
 }

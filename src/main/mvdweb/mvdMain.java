@@ -29,6 +29,21 @@ public class mvdMain {
             return uA.postVehicleChange(request.params("v_id"), Integer.parseInt(request.queryParams("submitted_by")), jBody);
         });
 
+        //Request change to the raised change request. A user can only raise change for their own vehicles.
+        /*
+        http://localhost:4567/update_change_request/100008?submitted_by=1001
+        {
+         "state":"NEWSTATE",
+         "model":"NEWMODEL"
+        }
+         */
+        patch("/update_change_request/:cr_id", (request, response) -> {
+
+            UserAction uA = new UserAction();
+            JSONObject jBody = new JSONObject(request.body());
+            return uA.patchUpdateVehicleChange(request.params("cr_id"), Integer.parseInt(request.queryParams("submitted_by")), jBody);
+        });
+
 
         //Raise ticket against a vehicle by a police/admin. Body -> case_desc, fine_amount, proof_of_payment.
         /*
